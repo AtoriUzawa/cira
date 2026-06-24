@@ -4,6 +4,7 @@ package cira
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/AtoriUzawa/cira/internal/protocol"
 	"github.com/AtoriUzawa/cira/internal/runtime"
@@ -77,7 +78,19 @@ func (c *client) onMessage(data []byte) error {
 	}
 
 	if msg.Type == TypeResp &&
-		c.Runtime.Resolve(msg.ReplyTo, &runtime.CallResult{Data: msg.Data}) {
+		c.Runtime.Resolve(msg.ReplyTo, &runtime.Delivery{Data: msg.Data}) {
+		c.Runtime.Unregister(msg.ReplyTo)
+		return nil
+	}
+
+	if msg.Type == TypeStream {
+		c.Runtime.Resolve(msg.ReplyTo, &runtime.Delivery{Data: msg.Data})
+		return nil
+	}
+
+	if msg.Type == TypeStreamClose {
+		c.Runtime.Resolve(msg.ReplyTo, &runtime.Delivery{Err: io.EOF})
+		c.Runtime.Unregister(msg.ReplyTo)
 		return nil
 	}
 

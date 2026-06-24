@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-// Runtime manages pending RPC call registrations and their results.
+// Runtime route incoming message deliveries to registered consumers.
 type Runtime struct {
-	pendings map[string]chan *CallResult
+	delivery map[string]chan *Delivery
 	mu       sync.Mutex
 }
 
-// CallResult holds the result of a pending RPC call, containing the response data or an error.
-type CallResult struct {
+// Delivery represents a runtime-delivered message payload or terminal error.
+type Delivery struct {
 	Data []byte
 	Err  error
 }
@@ -20,34 +20,36 @@ type CallResult struct {
 // NewRuntime creates and returns a new Runtime instance with an empty pending map.
 func NewRuntime() *Runtime {
 	return &Runtime{
-		pendings: make(map[string]chan *CallResult, 0),
+		delivery: make(map[string]chan *Delivery, 0),
 	}
 }
 
-// Register registers a pending call with the given ID and returns a channel to receive the result.
-func (r *Runtime) Register(id string) <-chan *CallResult {
-	ch := make(chan *CallResult, 1)
+// Register creates a delivery channel for the specified identifier.
+func (r *Runtime) Register(id string) <-chan *Delivery {
+	ch := make(chan *Delivery, 1)
 
 	r.mu.Lock()
-	r.pendings[id] = ch
+	r.delivery[id] = ch
 	r.mu.Unlock()
 
 	return ch
 }
 
-// Unregister removes a pending call registration for the given ID.
+// Unregister removes the delivery registration associated with the identifier.
 func (r *Runtime) Unregister(id string) {
 	r.mu.Lock()
-	delete(r.pendings, id)
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+
+	delete(r.delivery, id)
 }
 
-// Resolve delivers a result to the pending call identified by id. It returns true if the call was found and resolved.
-func (r *Runtime) Resolve(id string, res *CallResult) bool {
+// Resolve delivers a message to the registered consumer identified by id.
+// It returns true if a matching registration was found.
+func (r *Runtime) Resolve(id string, res *Delivery) bool {
 	r.mu.Lock()
-	ch, ok := r.pendings[id]
+	ch, ok := r.delivery[id]
 	if ok {
-		delete(r.pendings, id)
+		delete(r.delivery, id)
 	}
 	r.mu.Unlock()
 

@@ -48,9 +48,6 @@ func (r *Runtime) Unregister(id string) {
 func (r *Runtime) Resolve(id string, res *Delivery) bool {
 	r.mu.Lock()
 	ch, ok := r.delivery[id]
-	if ok {
-		delete(r.delivery, id)
-	}
 	r.mu.Unlock()
 
 	if !ok {

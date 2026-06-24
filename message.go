@@ -6,11 +6,11 @@ import (
 
 // Message represents a WebSocket protocol message with a route, type, and payload.
 type Message struct {
-	ID      string          `json:"id"`
-	Route   string          `json:"route"`
+	ID      string          `json:"id,omitempty"`
+	Route   string          `json:"route,omitempty"`
 	Type    Type            `json:"type"`
 	ReplyTo string          `json:"reply_to,omitempty"`
-	Data    json.RawMessage `json:"data"`
+	Data    json.RawMessage `json:"data,omitempty"`
 }
 
 // Type defines the message type (request, response, or push).
@@ -23,6 +23,10 @@ const (
 	TypeResp Type = "response"
 	// TypePush represents a one-way push message with no expected response.
 	TypePush Type = "push"
+	// TypeStream represents a streaming initiation message.
+	TypeStream Type = "stream"
+	// TypeStreamClose represents a streaming termination message.
+	TypeStreamClose Type = "stream_close"
 )
 
 // String returns the string representation of the Type.

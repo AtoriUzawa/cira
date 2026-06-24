@@ -16,6 +16,7 @@ type Context struct {
 	Conn     *Conn
 
 	client *client
+	stream *Stream
 
 	idGenerator idgen.IDGenerator
 	codec       protocol.Codec
@@ -126,6 +127,41 @@ func (c *Context) Call(route string, req any, resp any) error {
 		c.client.Runtime.Unregister(msg.ID)
 		return ErrCallTimeout
 	}
+}
+
+func (c *Context) OpenStream(id string) *Stream {
+	s := &Stream{
+		id,
+		c,
+		c.client.Runtime.Register(id),
+	}
+
+	c.client.OnClose(func() {
+		c.CloseStream()
+	})
+
+	c.stream = s
+	return s
+}
+
+func (c *Context) CloseStream() {
+	if c.stream.data == nil {
+		return
+	}
+
+	msg := Message{
+		Type:    TypeStreamClose,
+		ReplyTo: c.stream.id,
+	}
+
+	b, _ := c.codec.Encode(msg)
+	c.client.Send(b)
+
+	c.client.Runtime.Unregister(c.stream.id)
+
+	c.stream.id = ""
+	c.stream.data = nil
+	c.stream = nil
 }
 
 func newWithReq(id string, req *Message, data []byte) *Message {

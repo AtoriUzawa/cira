@@ -22,7 +22,7 @@ type Context struct {
 	codec       protocol.Codec
 }
 
-const defaultTimeout = 10 * time.Hour
+const defaultTimeout = 30 * time.Second
 
 // ErrCallTimeout is returned when a Call request exceeds the configured timeout.
 var ErrCallTimeout = errors.New("ws/context: call timeout")

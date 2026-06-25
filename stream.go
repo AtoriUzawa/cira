@@ -8,15 +8,15 @@ import (
 )
 
 type Stream struct {
-	id string
-	*Context
+	id   string
+	ctx  *Context
 	data <-chan *runtime.Delivery
 }
 
 var ErrStreamTimeout = errors.New("ws/stream: stream timeout")
 
 func (s *Stream) Send(data any) error {
-	b, err := s.codec.Encode(data)
+	b, err := s.ctx.codec.Encode(data)
 	if err != nil {
 		return err
 	}
@@ -27,12 +27,12 @@ func (s *Stream) Send(data any) error {
 		Data:    b,
 	}
 
-	b, err = s.codec.Encode(msg)
+	b, err = s.ctx.codec.Encode(msg)
 	if err != nil {
 		return err
 	}
 
-	s.peer.Send(b)
+	s.ctx.peer.Send(b)
 
 	return nil
 }
@@ -45,7 +45,7 @@ func (s *Stream) Recv(resp any) error {
 		return result.Err
 	}
 
-	if err := s.codec.Decode(b, resp); err != nil {
+	if err := s.ctx.codec.Decode(b, resp); err != nil {
 		return err
 	}
 
@@ -53,7 +53,7 @@ func (s *Stream) Recv(resp any) error {
 }
 
 func (s *Stream) RecvTimeout(resp any) error {
-	timer := time.NewTimer(s.Timeout)
+	timer := time.NewTimer(s.ctx.Timeout)
 	defer timer.Stop()
 
 	select {
@@ -64,7 +64,7 @@ func (s *Stream) RecvTimeout(resp any) error {
 			return result.Err
 		}
 
-		if err := s.codec.Decode(b, resp); err != nil {
+		if err := s.ctx.codec.Decode(b, resp); err != nil {
 			return err
 		}
 	case <-timer.C:

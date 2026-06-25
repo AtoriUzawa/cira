@@ -145,7 +145,7 @@ func (c *Context) OpenStream(id string) *Stream {
 }
 
 func (c *Context) CloseStream() {
-	if c.stream.data == nil {
+	if c.stream == nil {
 		return
 	}
 

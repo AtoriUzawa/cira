@@ -48,7 +48,7 @@ func main() {
 
 	chat.On("message", func(ctx *cira.Context) {
 		broadcast("chat.message", map[string]string{
-			"from": ctx.ClientID,
+			"from": ctx.PeerID,
 			"text": "hello everyone",
 		})
 		ctx.Resp(map[string]string{"status": "sent"})

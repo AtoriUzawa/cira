@@ -18,7 +18,7 @@ func main() {
 		// In practice use c.codec or json.Unmarshal(ctx.Message.Data, &msg)
 		_ = msg
 
-		log.Printf("[INFO] client=%s route=%s", ctx.ClientID, ctx.Message.Route)
+		log.Printf("[INFO] client=%s route=%s", ctx.PeerID, ctx.Message.Route)
 
 		// Send a fire-and-forget request (no response correlation).
 		if err := ctx.Req("ack", map[string]string{

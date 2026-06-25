@@ -8,14 +8,14 @@ import (
 	"github.com/AtoriUzawa/cira/internal/protocol"
 )
 
-// Context holds the state for handling a single WebSocket message, including the client, message, and codec.
+// Context holds the state for handling a single WebSocket message, including the peer, message, and codec.
 type Context struct {
-	ClientID string
-	Message  *Message
-	Timeout  time.Duration
-	Conn     *Conn
+	PeerID  string
+	Message *Message
+	Timeout time.Duration
+	Conn    *Conn
 
-	client *client
+	peer   *peer
 	stream *Stream
 
 	idGenerator idgen.IDGenerator
@@ -27,18 +27,18 @@ const defaultTimeout = 30 * time.Second
 // ErrCallTimeout is returned when a Call request exceeds the configured timeout.
 var ErrCallTimeout = errors.New("ws/context: call timeout")
 
-func newContext(client *client, idGenerator idgen.IDGenerator, codec protocol.Codec) *Context {
+func newContext(peer *peer, idGenerator idgen.IDGenerator, codec protocol.Codec) *Context {
 	ctx := &Context{
 		Timeout:     defaultTimeout,
-		client:      client,
+		peer:        peer,
 		idGenerator: idGenerator,
 		codec:       codec,
-		ClientID:    client.ID(),
+		PeerID:      peer.ID(),
 	}
 	return ctx
 }
 
-// Push sends a push-type event with the given data to the client.
+// Push sends a push-type event with the given data to the peer.
 func (c *Context) Push(event string, data any) error {
 	b, err := c.codec.Encode(data)
 	if err != nil {
@@ -52,12 +52,12 @@ func (c *Context) Push(event string, data any) error {
 		return err
 	}
 
-	c.client.Send(b)
+	c.peer.Send(b)
 
 	return nil
 }
 
-// Req sends a request-type event with the given data to the client.
+// Req sends a request-type event with the given data to the peer.
 func (c *Context) Req(event string, data any) error {
 	b, err := c.codec.Encode(data)
 	if err != nil {
@@ -71,12 +71,12 @@ func (c *Context) Req(event string, data any) error {
 		return err
 	}
 
-	c.client.Send(b)
+	c.peer.Send(b)
 
 	return nil
 }
 
-// Resp sends a response to the client, correlating with the current request message.
+// Resp sends a response to the peer, correlating with the current request message.
 func (c *Context) Resp(data any) {
 	b, err := c.codec.Encode(data)
 	if err != nil {
@@ -90,10 +90,10 @@ func (c *Context) Resp(data any) {
 		return
 	}
 
-	c.client.Send(b)
+	c.peer.Send(b)
 }
 
-// Call sends a request to the client and waits for a response, returning an error if the timeout is exceeded.
+// Call sends a request to the peer and waits for a response, returning an error if the timeout is exceeded.
 func (c *Context) Call(route string, req any, resp any) error {
 	b, err := c.codec.Encode(req)
 	if err != nil {
@@ -105,9 +105,9 @@ func (c *Context) Call(route string, req any, resp any) error {
 		return err
 	}
 
-	ch := c.client.Runtime.Register(msg.ID)
+	ch := c.peer.Runtime.Register(msg.ID)
 
-	c.client.Send(b)
+	c.peer.Send(b)
 
 	timer := time.NewTimer(c.Timeout)
 	defer timer.Stop()
@@ -124,7 +124,7 @@ func (c *Context) Call(route string, req any, resp any) error {
 
 		return nil
 	case <-timer.C:
-		c.client.Runtime.Unregister(msg.ID)
+		c.peer.Runtime.Unregister(msg.ID)
 		return ErrCallTimeout
 	}
 }
@@ -133,10 +133,10 @@ func (c *Context) OpenStream(id string) *Stream {
 	s := &Stream{
 		id,
 		c,
-		c.client.Runtime.Register(id),
+		c.peer.Runtime.Register(id),
 	}
 
-	c.client.OnClose(func() {
+	c.peer.OnClose(func() {
 		c.CloseStream()
 	})
 
@@ -155,9 +155,9 @@ func (c *Context) CloseStream() {
 	}
 
 	b, _ := c.codec.Encode(msg)
-	c.client.Send(b)
+	c.peer.Send(b)
 
-	c.client.Runtime.Unregister(c.stream.id)
+	c.peer.Runtime.Unregister(c.stream.id)
 
 	c.stream.id = ""
 	c.stream.data = nil

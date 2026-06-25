@@ -32,7 +32,7 @@ func (s *Stream) Send(data any) error {
 		return err
 	}
 
-	s.client.Send(b)
+	s.peer.Send(b)
 
 	return nil
 }

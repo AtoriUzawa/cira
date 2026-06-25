@@ -10,14 +10,14 @@ import (
 )
 
 type hub struct {
-	clients map[string]*client
+	peers map[string]*peer
 
 	router *Router
 
 	idGenerator idgen.IDGenerator
 	codec       protocol.Codec
 
-	OnClientClose func(string)
+	OnPeerClose func(string)
 
 	mu sync.Mutex
 }
@@ -27,51 +27,51 @@ var ErrConnNotFound = errors.New("ws/hub: connection not found")
 
 func newHub(router *Router, idGenerator idgen.IDGenerator, codec protocol.Codec) *hub {
 	return &hub{
-		clients:     make(map[string]*client, 0),
+		peers:       make(map[string]*peer, 0),
 		router:      router,
 		idGenerator: idGenerator,
 		codec:       codec,
 	}
 }
 
-func (h *hub) Register(wc *websocket.Conn) *client {
-	client := newClient(wc, h.idGenerator.Next())
-	client.Dispatcher = h
-	client.Codec = h.codec
-	client.OnClose(func() { h.Unregister(client.ID()) })
+func (h *hub) Register(wc *websocket.Conn) *peer {
+	peer := newPeer(wc, h.idGenerator.Next())
+	peer.Dispatcher = h
+	peer.Codec = h.codec
+	peer.OnClose(func() { h.Unregister(peer.ID()) })
 
 	h.mu.Lock()
-	h.clients[client.ID()] = client
+	h.peers[peer.ID()] = peer
 	h.mu.Unlock()
 
-	return client
+	return peer
 }
 
 func (h *hub) Unregister(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	_, ok := h.clients[id]
+	_, ok := h.peers[id]
 	if ok {
-		delete(h.clients, id)
+		delete(h.peers, id)
 	}
 
 	// if ok {
-	// 	client.Close()
+	// 	peer.Close()
 	// }
 }
 
-func (h *hub) Dispatch(c *client, m *Message) bool {
+func (h *hub) Dispatch(c *peer, m *Message) bool {
 	ctx := newContext(c, h.idGenerator, h.codec)
 	ctx.Message = m
 	ctx.Conn = newConn(c, h)
 	return h.router.dispatch(ctx)
 }
 
-func (h *hub) client(id string) (*client, bool) {
-	client, ok := h.clients[id]
+func (h *hub) peer(id string) (*peer, bool) {
+	peer, ok := h.peers[id]
 	if !ok {
 		return nil, false
 	}
 
-	return client, true
+	return peer, true
 }

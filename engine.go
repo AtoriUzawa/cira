@@ -79,14 +79,14 @@ func (e *Engine) HandleWS(
 		return
 	}
 
-	client := e.hub.Register(conn)
+	peer := e.hub.Register(conn)
 
-	go client.Start()
+	go peer.Start()
 
 	if e.OnConnect != nil {
 		e.OnConnect(
 			newConn(
-				client,
+				peer,
 				e.hub,
 			),
 		)
@@ -112,14 +112,14 @@ func (e *Engine) Run(addr string) error {
 func (e *Engine) Conn(
 	id string,
 ) (*Conn, error) {
-	c, ok := e.hub.client(id)
+	p, ok := e.hub.peer(id)
 
 	if !ok {
 		return nil, ErrNotFoundConn
 	}
 
 	return newConn(
-		c,
+		p,
 		e.hub,
 	), nil
 }

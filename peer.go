@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type client struct {
+type peer struct {
 	id string
 
 	conn *transport.Conn
@@ -26,13 +26,13 @@ type client struct {
 
 // Dispatcher routes incoming messages to the appropriate handler.
 type Dispatcher interface {
-	Dispatch(*client, *Message) bool
+	Dispatch(*peer, *Message) bool
 }
 
-// New creates a client.
-func newClient(ws *websocket.Conn, id string) *client {
+// New creates a peer.
+func newPeer(ws *websocket.Conn, id string) *peer {
 	conn := transport.New(ws, id)
-	c := &client{
+	c := &peer{
 		id:      id,
 		conn:    conn,
 		Runtime: runtime.NewRuntime(),
@@ -44,32 +44,32 @@ func newClient(ws *websocket.Conn, id string) *client {
 }
 
 // ErrInvalidMessageType is the error message prefix for unrecognized message types.
-var ErrInvalidMessageType = "ws/client: invalid message type"
+var ErrInvalidMessageType = "ws/peer: invalid message type"
 
-// ID returns the client id.
-func (c *client) ID() string {
+// ID returns the peer id.
+func (c *peer) ID() string {
 	return c.id
 }
 
-// Start starts the client.
-func (c *client) Start() {
+// Start starts the peer.
+func (c *peer) Start() {
 	c.conn.Start()
 }
 
 // Send sends a message.
-func (c *client) Send(data []byte) {
+func (c *peer) Send(data []byte) {
 	c.conn.Send(data)
 }
 
-func (c *client) Close() {
+func (c *peer) Close() {
 	c.conn.Close()
 }
 
-func (c *client) OnClose(fn func()) {
+func (c *peer) OnClose(fn func()) {
 	c.conn.OnClose = append(c.conn.OnClose, fn)
 }
 
-func (c *client) onMessage(data []byte) error {
+func (c *peer) onMessage(data []byte) error {
 	var msg Message
 
 	err := c.Codec.Decode(data, &msg)

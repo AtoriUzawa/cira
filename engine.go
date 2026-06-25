@@ -108,6 +108,19 @@ func (e *Engine) Run(addr string) error {
 	)
 }
 
+func (e *Engine) Dial(url string) (*Conn, error) {
+	ws, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+	peer := e.hub.Register(ws)
+	conn := newConn(peer, e.hub)
+
+	go peer.Start()
+
+	return conn, nil
+}
+
 // Conn returns the connection with the given ID, or ErrNotFoundConn if it does not exist.
 func (e *Engine) Conn(
 	id string,
